@@ -198,6 +198,37 @@ def tree_stats(merge):
         tcount[m.tree] = mcount + m.ccount
         tree_stats(m)
 
+def set_filter_array(filter_file_name):
+    with open(DoFiltered) as filter_file:
+        filter_commits = filter_file.read().split('\n')
+    return filter_commits
+
+#
+# Figure out how many commits were in the filter list
+#
+Nodecounts = { }
+# We would like to scale the coloring so that the highest in-filter to 
+# total ratio will correspond to the darkest color
+max_ratio = -1
+def FiltStats(merge):
+    try:
+        tcount = Nodecounts[merge.tree]
+    except KeyError:
+        tcount = [0, 0]
+    in_filt = len([commit for commit in merge.commits if commit in filter_commits])
+    merges = [merge.id]
+    for m in merge.merges:
+        FiltStats(m)
+        merges += [m.id]
+    Nodecounts[merge.tree] = \
+        [tcount[0] + in_filt, tcount[1] + len(merge.commits) + len(merges)]
+    global max_ratio
+    if Nodecounts[merge.tree][1]!=0:
+        current_ratio = \
+            Nodecounts[merge.tree][0]/ Nodecounts[merge.tree][1]
+        if current_ratio > max_ratio:
+            max_ratio = current_ratio
+
 #
 # Maybe we only want so many top-level trees
 #
@@ -287,6 +318,8 @@ def GV_out(file):
                sides='4')
     if DoSigned:
         GV_out_node_signed(graph, 'mainline')
+    elif DoFiltered:
+        GV_out_node_filt(graph, 'mainline')
     else:
         GV_out_node(graph, 'mainline')
     graph.view()
@@ -300,6 +333,12 @@ def GV_color(count):
     if count >= YellowThresh:
         return 'orange'
     return 'black'
+
+#
+# Output nodes with filter coloring
+#
+def GV_color_filt(count):
+    return "0.9, %f, %f" % ((count/max_ratio), 1-0.25*(count/max_ratio))
 
 #
 # Output nodes with traffic coloring
@@ -336,6 +375,28 @@ def GV_out_node_signed(graph, node, seen = []):
                        taillabel='%d' % srcs[src], labelfontsize="14",
                        color = color, penwidth='2')
             GV_out_node_signed(graph, src, seen + [node])
+
+#
+# Output nodes with filter list coloring
+#
+def GV_out_node_filt(graph, node, seen = []):
+    try:
+        srcs = Treecounts[node]
+    except KeyError:  # "applied by linus"
+        return
+    srcnames = srcs.keys()
+    srcnames = sorted(srcnames, key = lambda i: srcs[i], reverse = True)
+    for src in srcnames:
+        if src not in seen:
+            if  src in Nodecounts:
+                filt, total = Nodecounts[src]
+                graph.attr('node', xlabel = '%d/%d' % (filt, total),
+                penwidth='1',fillcolor=GV_color_filt(filt/total),style='filled')
+                graph.edge(GV_fixname(src), GV_fixname(node),
+                    taillabel='%d' % srcs[src], labelfontsize="14",
+                    color = 'black', penwidth='2')
+            GV_out_node_filt(graph, src, seen + [node])
+
 #
 # argument parsing stuff.
 #
@@ -359,6 +420,8 @@ def setup_args():
                    required = False, default = 200, type = int)
     p.add_argument('-s', '--signed', help = 'Display signed trees',
                    action='store_true', default = False)
+    p.add_argument('-f', '--filter', help = 'Filter file with relevant commits',
+                   required = False)
     return p
 
 
@@ -368,6 +431,7 @@ Repo = args.repo
 RedThresh = args.red
 YellowThresh = args.yellow
 DoSigned = args.signed
+DoFiltered = args.filter
 #
 # Find our commits.
 #
@@ -396,6 +460,9 @@ if args.trim:
     trim_trees(args.trim)
 print('Tree flow')
 dumpflow('mainline')
+if DoFiltered:
+    filter_commits = set_filter_array(DoFiltered)
+    FiltStats(Mainline)
 if args.gvoutput:
     GV_out(args.gvoutput)
 if DoSigned:
