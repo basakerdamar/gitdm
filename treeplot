@@ -306,6 +306,7 @@ def SigStats(tree):
 #
 # Graphviz.
 #
+filt_title = 'Colormap'
 def GV_out(file):
     graph = graphviz.Digraph('mainline', filename = file, format = 'svg')
     graph.body.extend(['label="Patch flow into the mainline"',
@@ -319,6 +320,18 @@ def GV_out(file):
     if DoSigned:
         GV_out_node_signed(graph, 'mainline')
     elif DoFiltered:
+        # Print out the colormap
+        with graph.subgraph(name='cluster1') as legend:
+            legend.attr(label=filt_title)
+            legend.node(
+            '0%                                                       {0:.0f}%'\
+            .format(max_ratio*100), 
+                fillcolor=GV_color_filt(0)+':'+GV_color_filt(max_ratio), 
+                style='filled', penwidth='2')
+        # Edge is for positioning the colormap
+        graph.edge(
+            '0%                                                       {0:.0f}%'\
+            .format(max_ratio*100),'mainline',style='invis',constraint='false')
         GV_out_node_filt(graph, 'mainline')
     else:
         GV_out_node(graph, 'mainline')
@@ -422,6 +435,8 @@ def setup_args():
                    action='store_true', default = False)
     p.add_argument('-f', '--filter', help = 'Filter file with relevant commits',
                    required = False)
+    p.add_argument('-c', '--colormap', help = 'Title for the colormap',
+                   required = False)
     return p
 
 
@@ -463,6 +478,8 @@ dumpflow('mainline')
 if DoFiltered:
     filter_commits = set_filter_array(DoFiltered)
     FiltStats(Mainline)
+if args.colormap:
+    filt_title = args.colormap
 if args.gvoutput:
     GV_out(args.gvoutput)
 if DoSigned:
