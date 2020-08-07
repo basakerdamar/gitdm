@@ -133,21 +133,38 @@ def get_tag(patch, line, input):
     #
     if patterns['numstat'].match(line):
         return get_numstat(patch, line, input)
+
     #
     # Look for interesting tags
     #
     m = patterns['signed-off-by'].match(line)
     if m:
         patch.signoffs.append(m.group(2))
-    else:
-        #
-        # Look for other tags indicating that somebody at least
-        # looked at the patch.
-        #
-        for tag in ('acked-by', 'reviewed-by', 'tested-by'):
-            if patterns[tag].match(line):
-                patch.othertags += 1
-                break
+    elif patterns['acked-by'].match(line):
+        m = patterns['acked-by'].match(line)
+        patch.ackedbys.append(m.group(2))
+        patch.othertags += 1
+    elif patterns['reviewed-by'].match(line):
+        m = patterns['reviewed-by'].match(line)
+        patch.reviews.append(m.group(2))
+        patch.othertags += 1
+    elif patterns['reported-by'].match(line):
+        m = patterns['reported-by'].match(line)
+        patch.report.append(m.group(2))
+        patch.othertags += 1
+    elif patterns['reported-by2'].match(line):
+        m = patterns['reported-by2'].match(line)
+        patch.report.append(m.group(1))
+        patch.othertags += 1
+    elif patterns['reported-and-tested-by'].match(line):
+        m = patterns['reported-and-tested-by'].match(line)
+        patch.report.append(m.group(2))
+        patch.testedbys.append(m.group(2))
+        patch.othertags += 1
+    elif patterns['tested-by'].match(line):
+        m = patterns['tested-by'].match(line)
+        patch.testedbys.append(m.group(2))
+        patch.othertags += 1
     patch.taglines.append(line)
     return S_TAGS
 
@@ -180,6 +197,10 @@ class patch:
         self.templog = ''
         self.author = ''
         self.signoffs = [ ]
+        self.reviews = [ ]
+        self.ackedbys = [ ]
+        self.testedbys = [ ]
+        self.report = [ ]
         self.othertags = 0
         self.added = self.removed = 0
         self.files = [ ]
@@ -210,7 +231,7 @@ def grabpatch(input):
         line = getline(input)
         if line is None:
             if state != S_NUMSTAT:
-                print('Ran out of patch', state)
+                # print('Ran out of patch', state)
                 return None
             return p
         state = grabbers[state](p, line, input)
