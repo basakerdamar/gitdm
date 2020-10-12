@@ -58,7 +58,7 @@ def save_csv (prefix='data'):
     # Dump the ChangeSets
     if len(ChangeSets) > 0:
         fd = open('%s-changesets.csv' % prefix, 'w')
-        writer = csv.writer (fd, quoting=csv.QUOTE_NONNUMERIC)
+        writer = csv.writer (fd)
         writer.writerow (['Commit', 'Date', 'Domain',
                           'Email', 'Name', 'Affliation',
                           'Added', 'Removed'])
@@ -68,7 +68,7 @@ def save_csv (prefix='data'):
     # Dump the file types
     if len(FileTypes) > 0:
         fd = open('%s-filetypes.csv' % prefix, 'w')
-        writer = csv.writer (fd, quoting=csv.QUOTE_NONNUMERIC)
+        writer = csv.writer (fd)
 
         writer.writerow (['Commit', 'Type', 'Added', 'Removed'])
         for commit in FileTypes:
@@ -79,7 +79,7 @@ def save_csv (prefix='data'):
 def OutputCSV (file):
     if file is None:
         return
-    writer = csv.writer (file, quoting=csv.QUOTE_NONNUMERIC)
+    writer = csv.writer(file)
     writer.writerow (['Name', 'Email', 'Affliation', 'Date',
                       'Added', 'Removed', 'Changesets'])
     for date, stat in PeriodCommitHash.items():
@@ -92,11 +92,13 @@ def OutputCSV (file):
 def OutputHackersCSV (file, hlist):
     if file is None:
         return
-    file.write ("Name,Last affiliation,Activity Start,Activity End,Commits,Changed Lines,Lines Removed,Signoffs,Reviews,Test Credits,Test Credits Given,Report Credits,Report Credits Given\n")
+    writer = csv.writer(file)
+    writer.writerow (["Name","Last affiliation","Activity Start","Activity End","Commits",
+    "Changed Lines","Lines Removed","Signoffs","Reviews","Test Credits",
+    "Test Credits Given","Report Credits","Report Credits Given"])
     for hacker in hlist:
         if len(hacker.patches) > 0:
-            file.write ("\"%s\",%s,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d\n" %
-                        (hacker.name,
+            writer.writerow([hacker.name,
                          hacker.emailemployer (None, hacker.activity_end).name,
                          hacker.activity_start, hacker.activity_end,
                          len(hacker.patches),
@@ -106,7 +108,7 @@ def OutputHackersCSV (file, hlist):
                          len(hacker.tested),
                          hacker.testcred,
                          len(hacker.reports),
-                         hacker.repcred))
+                         hacker.repcred])
 
 __all__ = [  'AccumulatePatch', 'OutputCSV', 'OutputHackersCSV', 'store_patch' ]
 
