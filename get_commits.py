@@ -33,7 +33,8 @@ while patch:
                     patch.added,
                     patch.removed,
                     ','.join(patch.files)]
-    print(*current_patch)
+    if not args.dump:
+        print(*current_patch)
     results.append(current_patch)
     patch = grabpatch(input)
 
